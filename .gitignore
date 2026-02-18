@@ -1,0 +1,21 @@
+# --- Rust/Cargo ---
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# --- Visual Studio & VS Code ---
+.vs/
+.vscode/
+*.pdb
+*.user
+*.suo
+*.sln.docstates
+
+# --- Cyberpunk Modding Artifacts ---
+*.dll
+/bin/
+/red4ext/
+
+# --- Security & Secrets ---
+.env
+.env.local
