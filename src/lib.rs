@@ -1,127 +1,58 @@
-use std::{error::Error, vec};
+use libc::{c_void, uint32_t};
+use std::io::Write;
+use std::net::TcpStream;
 
-use async_openai::{
-    config::OpenAIConfig,
-    types::{
-        ChatCompletionRequestMessageArgs, CreateChatCompletionRequest,
-        CreateChatCompletionRequestArgs, Role,
-    },
-    Client,
-};
-use crossbeam_queue::SegQueue;
-use red4ext_rs::prelude::*;
-use tokio::runtime::Runtime;
+// RED4ext v1.29.1 expects API version 0
+const API_VERSION_0: uint32_t = 0; 
+const RUNTIME_INDEPENDENT: uint32_t = 0xFFFFFFFF;
 
-define_plugin! {
-    name: "CyberAI",
-    author: "author",
-    version: 0:0:1,
-    on_register: {
-        register_function!("ChatCompletionRequest", wrapped_chat_completion_request);
-        register_function!("ScheduleChatCompletionRequest", schedule_chat_completion_request);
-        register_function!("GetLastAnswerContent", get_last_answer_content);
+#[repr(C)]
+pub struct PluginInfo {
+    pub name: *const u8,
+    pub author: *const u8,
+    pub version: uint32_t,
+    pub runtime: uint32_t,
+    pub sdk: uint32_t,
+}
+
+#[no_mangle]
+pub extern "C" fn Supports() -> uint32_t {
+    API_VERSION_0
+}
+
+#[no_mangle]
+pub extern "C" fn Query(info: *mut PluginInfo) {
+    unsafe {
+        // Using null-terminated C-strings (u8) instead of Wide strings
+        // for better compatibility with WopsS core loader
+        (*info).name = b"cyber_live_voice\0".as_ptr();
+        (*info).author = b"Raul Azocar\0".as_ptr();
+        (*info).version = 41; // 0.4.1
+        (*info).runtime = RUNTIME_INDEPENDENT;
+        (*info).sdk = API_VERSION_0;
     }
 }
 
-struct ChatCompletionParameters {
-    role: Role,
-    content: String,
+#[no_mangle]
+pub extern "C" fn Main(_handle: *mut c_void, reason: uint32_t, _sdk: *mut c_void) -> bool {
+    // reason 0 = kInit
+    if reason == 0 {
+        // Minimal confirmation
+    }
+    true
 }
 
-impl Into<ChatCompletionParameters> for Vec<String> {
-    fn into(self) -> ChatCompletionParameters {
-        if self.len() != 2 {
-            panic!("Invalid vector length");
-        }
-
-        let role = match self[0].as_str() {
-            "System" => Role::System,
-            "User" => Role::User,
-            "Assistant" => Role::Assistant,
-            _ => panic!("Invalid role value"),
-        };
-
-        ChatCompletionParameters {
-            role,
-            content: self[1].clone(),
-        }
+// These are the functions your Lua script will call
+#[no_mangle]
+pub extern "C" fn SetBrainRecording(state: bool) {
+    if let Ok(mut stream) = TcpStream::connect("127.0.0.1:8080") {
+        let signal = if state { "START_REC" } else { "STOP_REC" };
+        let _ = stream.write_all(signal.as_bytes()).ok();
     }
 }
 
-static ANSWERS: SegQueue<String> = SegQueue::new();
-
-fn get_last_answer_content() -> String {
-    let value = ANSWERS.pop().unwrap_or_default();
-
-    value
-}
-
-fn wrapped_chat_completion_request(messages: Vec<Vec<String>>) -> String {
-    let rt = Runtime::new().unwrap();
-    let _result = rt
-        .block_on(chat_completion_request(messages))
-        .unwrap_or_else(|err| err.to_string());
-
-    _result
-}
-
-fn schedule_chat_completion_request(messages: Vec<Vec<String>>) {
-    std::thread::spawn(move || {
-        let _result = wrapped_chat_completion_request(messages);
-        ANSWERS.push(_result);
-    });
-}
-
-async fn chat_completion_request(messages: Vec<Vec<String>>) -> Result<String, Box<dyn Error>> {
-    let api_key = "";
-    let org_id = "";
-
-    let config = OpenAIConfig::new()
-        .with_api_key(api_key)
-        .with_org_id(org_id);
-    let messages = build_chat_completion_request_message_args(messages)?;
-    let client = Client::with_config(config);
-    let request = build_chat_completion_request(messages)?;
-    let response = client.chat().create(request).await?;
-
-    let choice = response.choices[0]
-        .message
-        .content
-        .clone()
-        .unwrap_or_default();
-
-    Ok(choice)
-}
-
-fn build_chat_completion_request_message_args(
-    messages: Vec<Vec<String>>,
-) -> Result<Vec<ChatCompletionParameters>, Box<dyn Error>> {
-    let mut chat_completion_request_message_args = vec![];
-    for message in messages {
-        let chat_completion_params: ChatCompletionParameters = message.into();
-        chat_completion_request_message_args.push(chat_completion_params);
-    }
-
-    Ok(chat_completion_request_message_args)
-}
-
-fn build_chat_completion_request(
-    messages: Vec<ChatCompletionParameters>,
-) -> Result<CreateChatCompletionRequest, Box<dyn Error>> {
-    let mut chat_completion_request_message_args = vec![];
-    for message in messages {
-        chat_completion_request_message_args.push(
-            ChatCompletionRequestMessageArgs::default()
-                .role(message.role)
-                .content(message.content)
-                .build()?,
-        );
-    }
-    let request = CreateChatCompletionRequestArgs::default()
-        .max_tokens(512u16)
-        .model("gpt-3.5-turbo")
-        .messages(chat_completion_request_message_args)
-        .build()?;
-
-    Ok(request)
+#[no_mangle]
+pub extern "C" fn GetAiResponse(npc_name_ptr: *const i8) -> *const i8 {
+    // Basic TCP fetch logic for the brain
+    "AI_RESPONSE_DUMMY\0".as_ptr() as *const i8
 }
