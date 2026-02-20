@@ -1,12 +1,38 @@
 [package]
 name = "cyber_live_voice"
-version = "0.4.0"
+version = "2.0.1"
 edition = "2021"
+authors = ["Raul Azocar"]
+description = "Native RED4ext plugin for CyberLive AI integration"
 
 [lib]
+# This defines the output as a Dynamic Link Library (.dll)
+name = "cyber_live_voice"
 crate-type = ["cdylib"]
 
 [dependencies]
+# Core Engine Hook (Using the updated 0.11+ API structure)
+red4ext-rs = { git = "https://github.com/jac3km4/red4ext-rs.git", branch = "master" }
+
+# System Interfaces
 libc = "0.2"
-# We'll use this for clean string handling between Rust and the SDK
-widestring = "1.1"
+lazy_static = "1.4"
+
+# Audio Capture & Processing
+cpal = "0.15"
+hound = "3.5"
+
+# Input Detection (Numpad7)
+device_query = "1.1"
+
+# Async AI Pipeline
+# Note: async-openai v0.20 requires u16 for max_tokens, which we fixed in lib.rs
+tokio = { version = "1", features = ["full"] }
+async-openai = "0.20"
+dotenvy = "0.15"
+
+[profile.release]
+# Optimization for Night City performance
+opt-level = 3
+lto = "thin"
+panic = "abort"

@@ -1,21 +1,33 @@
-# --- Rust/Cargo ---
-**/target/
-**/*.rs.bk
-**Cargo.lock
-
-# --- Visual Studio & VS Code ---
-.vs/
-.vscode/
-*.pdb
-*.user
-*.suo
-*.sln.docstates
-
-# --- Cyberpunk Modding Artifacts ---
-*.dll
-/bin/
-/red4ext/
-
-# --- Security & Secrets ---
+# --- SENSITIVE DATA (THE LEAKS) ---
+# Ignore the environment files containing your OpenAI API Key
 .env
-.env.local
+brain/.env
+
+# Ignore your local voice recordings (privacy)
+*.wav
+brain/request.wav
+voice.wav
+
+# --- RUST & COMPILATION ---
+# Ignore the massive build folders (hundreds of MBs)
+target/
+brain/target/
+
+# Ignore the lock file if you want others to resolve their own deps
+# Cargo.lock
+
+# --- IDE & SYSTEM ---
+# Ignore the locked Visual Studio metadata folder
+.vs/
+
+# Ignore local VS Code settings
+.vscode/
+
+# Windows system files
+Thumbs.db
+Desktop.ini
+
+# --- INTERFACE & TEMP DATA ---
+# Ignore the "Dead Drop" file that updates while playing
+interface/output.txt
+**/output.txt
